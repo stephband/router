@@ -7,8 +7,8 @@
 
 		// .on(regex, fn)
 		// Bind a fn to be called whenever regex matches the route. Callback fn
-		// is called with 'this' set to the router, and the arguments
-		// fn(unmatched, capture1, capture2, ...)
+		// is called with 'this' set to the router and the result of regex
+		// capturing groups as arguments.
 
 		on: function on(regex, fn) {
 			this.push(slice(arguments));
@@ -57,8 +57,9 @@
 		},
 
 		// .trigger(path)
-		// Call all routes whose regex matches path, passing the remainder
-		// of the path after the match and the result of any capturing groups
+		// Call all routes whose regex matches path, passing the result of any
+		// capturing groups to the handler. Data about the current path is
+		// stored on the regex object. It is used internally by .create().
 
 		trigger: function trigger(path) {
 			var n = -1;
@@ -91,8 +92,13 @@
 			return this;
 		},
 
+		// .create(regex)
+		// Create a new router whose root is this router.
+
 		create: function create(regex) {
 			var router = Object.create(prototype, properties);
+
+			router.root = this.root || this;
 
 			this.on(regex, function() {
 				// Set the current root path for the router
@@ -104,31 +110,35 @@
 
 			return router;
 		},
-		
+
 		destroy: function destroy() {
 			this.off();
 			return this;
 		},
-		
+
 		navigate: function navigate(path, state) {
+			if (this.path === undefined) { return this; }
+
 			var rootPath = this.path + path;
 
 			history.pushState(state, '', rootPath);
 
 			// A pushState call does not send a popstate event,
 			// so we must manually trigger the route change.
-			setTimeout(this.trigger.bind(this, rootPath), 0);
+			setTimeout(this.root.trigger.bind(this.root, rootPath), 0);
 			return this;
 		},
 
 		redirect: function redirect(path, state) {
+			if (this.path === undefined) { return this; }
+
 			var rootPath = this.path + path;
 
 			history.replaceState(state, '', rootPath);
 
 			// A pushState call does not send a popstate event,
 			// so we must manually trigger the route change.
-			setTimeout(this.trigger.bind(this, rootPath), 0);
+			setTimeout(this.root.trigger.bind(this.root, rootPath), 0);
 			return this;
 		},
 
@@ -142,10 +152,10 @@
 	};
 
 	var properties = {
-		path: { value: '', enumerable: false, writable: true },
+		root: { value: undefined, enumerable: false, writable: true },
+		path: { value: undefined, enumerable: false, writable: true },
 		length: { value: 0, enumerable: false, writable: true }
 	};
-
 
 	function getCatchers(object) {
 		if (!object.catchers) {
@@ -155,10 +165,6 @@
 		}
 
 		return object.catchers;
-	}
-
-	function call(fn) {
-		fn.call(this);
 	}
 
 	function classOf(object) {
@@ -185,14 +191,14 @@
 		}
 
 		window.addEventListener('popstate', listen);
-		
+
+		router.root = this;
+		router.path = '';
+
 		router.destroy = function() {
-			window.addEventListener('popstate', listen);
+			window.removeEventListener('popstate', listen);
 			prototype.destroy.apply(this);
 		};
-
-		//window.addEventListener('load', chooseRoutes);
-		router.trigger(location.pathname);
 
 		return router;
 	}
