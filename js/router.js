@@ -4,35 +4,36 @@
 	var slice = Function.prototype.call.bind(Array.prototype.slice);
 
 	var prototype = {
+
 		// .on(regex, fn)
 		// Bind a fn to be called whenever regex matches the route. Callback fn
 		// is called with 'this' set to the router, and the arguments
 		// fn(unmatched, capture1, capture2, ...)
 
 		on: function on(regex, fn) {
-			var routes = getArray(this, 'routes');
-			routes.push(slice(arguments));
+			this.push(slice(arguments));
 			return this;
 		},
 
 		// .off()
 		// Remove all routes
-		
+
 		// .off(regex)
 		// Remove all routes that have regex
-		
+
 		// .off(fn)
 		// Remove all routes that have function fn
-		 
+
 		// .off(regex, fn)
 		// Remove routes with regex and fn
 
 		off: function off(regex, fn) {
-			var routes = getArray(this, 'routes');
-			var n = routes.length;
+			var n = this.length;
 
 			if (arguments.length === 0) {
-				routes.length = 0;
+				while (this.length--) {
+					delete this[this.length];
+				}
 				return this;
 			}
 
@@ -41,16 +42,16 @@
 			    	testBoth ;
 
 			while (n--) {
-				if (test(routes[n], regex, fn)) {
-					routes.splice(n, 1);
+				if (test(this[n], regex, fn)) {
+					this.splice(n, 1);
 				}
 			}
 
 			return this;
 		},
 
-		catch: function(fn) {
-			var array = getArray(this, 'catchers');
+		catch: function catchUnmatched(fn) {
+			var array = getCatchers(this);
 			array.push(fn);
 			return this;
 		},
@@ -60,31 +61,31 @@
 		// of the path after the match and the result of any capturing groups
 
 		trigger: function trigger(path) {
-			var routes = getArray(this, 'routes');
 			var n = -1;
-			var l = routes.length;
-			var route, args;
+			var l = this.length;
 			var count = 0;
-			var array;
-
-			this.path = path;
+			var route, args;
 
 			while (++n < l) {
-				route = routes[n];
+				route = this[n];
 				args = route[0].exec(path);
 				
 				if (args) {
-					// Make the first argument the remainder of the string left
-					// after the match.
-					args[0] = path.replace(route[0], '');
-					route[1].apply(this, args);
+					route[0].lastString = path;
+					route[0].lastMatch = args[0];
+					route[1].apply(this, slice(args, 1));
 					count++;
 				}
 			}
 
 			if (count === 0) {
-				array = getArray(this, 'catchers');
-				array.forEach(call, this);
+				var catchers = getCatchers(this);
+				n = -1;
+				l = catchers.length;
+				
+				while (++n < l) {
+					catchers[n].call(this, path);
+				}
 			}
 
 			return this;
@@ -93,7 +94,13 @@
 		create: function create(regex) {
 			var router = Object.create(prototype, properties);
 
-			this.on(regex, router.trigger.bind(router));
+			this.on(regex, function() {
+				// Set the current root path for the router
+				router.path = this.path + regex.lastMatch;
+				
+				// Trigger the router with the unmatched remainder of the path
+				router.trigger(regex.lastString.replace(regex, ''));
+			});
 
 			return router;
 		},
@@ -104,37 +111,50 @@
 		},
 		
 		navigate: function navigate(path, state) {
-			history.pushState(state, '', path);
-			
+			var rootPath = this.path + path;
+
+			history.pushState(state, '', rootPath);
+
 			// A pushState call does not send a popstate event,
 			// so we must manually trigger the route change.
-			setTimeout(this.trigger.bind(this, path), 0);
+			setTimeout(this.trigger.bind(this, rootPath), 0);
 			return this;
 		},
 
 		redirect: function redirect(path, state) {
-			history.replaceState(state, '', path);
-			
+			var rootPath = this.path + path;
+
+			history.replaceState(state, '', rootPath);
+
 			// A pushState call does not send a popstate event,
 			// so we must manually trigger the route change.
-			setTimeout(this.trigger.bind(this, path), 0);
+			setTimeout(this.trigger.bind(this, rootPath), 0);
 			return this;
-		}
+		},
+
+		// A router is an array-like object. Give it some
+		// array methods.
+
+		map: Array.prototype.map,
+		push: Array.prototype.push,
+		splice: Array.prototype.splice,
+		forEach: Array.prototype.forEach
 	};
 
 	var properties = {
-		path: { value: '', enumerable: true, writable: true }
+		path: { value: '', enumerable: false, writable: true },
+		length: { value: 0, enumerable: false, writable: true }
 	};
 
 
-	function getArray(object, property) {
-		if (!object[property]) {
-			Object.defineProperty(object, property, {
+	function getCatchers(object) {
+		if (!object.catchers) {
+			Object.defineProperty(object, 'catchers', {
 				value: []
 			});
 		}
 
-		return object[property];
+		return object.catchers;
 	}
 
 	function call(fn) {
