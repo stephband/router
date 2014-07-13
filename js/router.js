@@ -1,7 +1,11 @@
 (function(window, location, history) {
 	"use strict";
 
+	var debug = true;
+
 	var slice = Function.prototype.call.bind(Array.prototype.slice);
+
+	var rslash = /^\//;
 
 	var prototype = {
 
@@ -70,7 +74,7 @@
 			while (++n < l) {
 				route = this[n];
 				args = route[0].exec(path);
-				
+
 				if (args) {
 					route[0].lastString = path;
 					route[0].lastMatch = args[0];
@@ -119,13 +123,11 @@
 		navigate: function navigate(path, state) {
 			if (this.path === undefined) { return this; }
 
-			var rootPath = this.path + path;
-
-			history.pushState(state, '', rootPath);
-
-			// A pushState call does not send a popstate event,
-			// so we must manually trigger the route change.
-			setTimeout(this.root.trigger.bind(this.root, rootPath), 0);
+			// Where path has a leading '/' send it to root.navigate
+			// without prepending the local path. In other words, treat
+			// as a sort of absolute URL.
+			path = rslash.test(path) ? path : (this.path + path);
+			this.root.navigate(path, state);
 			return this;
 		},
 
@@ -138,6 +140,8 @@
 
 			// A pushState call does not send a popstate event,
 			// so we must manually trigger the route change.
+			// We could send a popstate event instead, or a custom
+			// event. Definitely worth considering.
 			setTimeout(this.root.trigger.bind(this.root, rootPath), 0);
 			return this;
 		},
@@ -183,21 +187,40 @@
 		return testRegex(route, regex) && testFn(route, fn);
 	}
 
-	function Router() {
+	function Router(base) {
 		var router = Object.create(prototype, properties);
+		var rpath;
 
 		function listen() {
-			router.trigger(location.pathname);
+			if (!rpath.test(location.pathname)) { return; }
+			if (debug) { console.log('window:popstate', location.pathname); }
+			router.trigger(location.pathname.replace(rpath, ''));
 		}
 
-		window.addEventListener('popstate', listen);
+		router.root = router;
+		router.path = '/';
+		router.base = base || '';
+		rpath = RegExp('^' + router.base + router.path);
 
-		router.root = this;
-		router.path = '';
+		window.addEventListener('popstate', listen);
 
 		router.destroy = function() {
 			window.removeEventListener('popstate', listen);
 			prototype.destroy.apply(this);
+		};
+
+		router.navigate = function(path, state) {
+			if (debug) { console.log('router.navigate()', path); }
+
+			path = router.base + (rslash.test(path) ? path : (router.path + path));
+			history.pushState(state, '', path);
+
+			// A pushState call does not send a popstate event,
+			// so we must manually trigger the route change.
+			// We could trigger a false popstate event instead,
+			// definitely worth considering.
+			this.trigger(location.pathname.replace(rpath, ''));
+			return this;
 		};
 
 		return router;
