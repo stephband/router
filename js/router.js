@@ -7,6 +7,8 @@
 
 	var rslash = /^\//;
 
+	var blank = {};
+
 	var prototype = {
 
 		// .on(regex, fn)
@@ -120,29 +122,14 @@
 			return this;
 		},
 
-		navigate: function navigate(path, state) {
+		navigate: function navigate(path, options) {
 			if (this.path === undefined) { return this; }
 
 			// Where path has a leading '/' send it to root.navigate
 			// without prepending the local path. In other words, treat
 			// as a sort of absolute URL.
 			path = rslash.test(path) ? path : (this.path + path);
-			this.root.navigate(path, state);
-			return this;
-		},
-
-		redirect: function redirect(path, state) {
-			if (this.path === undefined) { return this; }
-
-			var rootPath = this.path + path;
-
-			history.replaceState(state, '', rootPath);
-
-			// A pushState call does not send a popstate event,
-			// so we must manually trigger the route change.
-			// We could send a popstate event instead, or a custom
-			// event. Definitely worth considering.
-			setTimeout(this.root.trigger.bind(this.root, rootPath), 0);
+			this.root.navigate(path, options);
 			return this;
 		},
 
@@ -209,11 +196,17 @@
 			prototype.destroy.apply(this);
 		};
 
-		router.navigate = function(path, state) {
+		router.navigate = function(path, options) {
 			if (debug) { console.log('router.navigate()', path); }
 
 			path = router.base + (rslash.test(path) ? path : (router.path + path));
-			history.pushState(state, '', path);
+
+			if (options && options.history === false) {
+				history.replaceState(blank, '', path);
+			}
+			else {
+				history.pushState(blank, '', path);
+			}
 
 			// A pushState call does not send a popstate event,
 			// so we must manually trigger the route change.
