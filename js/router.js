@@ -1,7 +1,7 @@
 (function(window, location, history) {
 	"use strict";
 
-	var debug = true;
+	var debug = false;//true;
 
 	var slice = Function.prototype.call.bind(Array.prototype.slice);
 
