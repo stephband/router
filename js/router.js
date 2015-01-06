@@ -177,10 +177,19 @@
 	function Router(base) {
 		var router = Object.create(prototype, properties);
 		var rpath;
+		var pathname = location.pathname;
 
 		function listen() {
-			if (!rpath.test(location.pathname)) { return; }
+			// Hash changes fire popstate. We don't want to
+			// change the route unless the pathname has changed.
+			if (location.pathname === pathname) { return; }
+			pathname = location.pathname;
+
+			// Check the path matches the router's path.
+			if (!rpath.test(pathname)) { return; }
+
 			if (debug) { console.log('window:popstate', location.pathname); }
+
 			router.trigger(location.pathname.replace(rpath, ''));
 		}
 
