@@ -1,13 +1,22 @@
 (function(window, location, history) {
 	"use strict";
 
-	var debug = false;//true;
+	var debug = true;
+
+	var Fn = window.Fn;
+	var dom = window.dom;
 
 	var slice = Function.prototype.call.bind(Array.prototype.slice);
 
 	var rslash = /^\//;
 
 	var blank = {};
+
+	var classOf = Fn.classOf;
+
+	var location = window.location;
+
+	var catcherSymbol = Symbol('catchers');
 
 	var prototype = {
 
@@ -92,10 +101,11 @@
 				
 				while (++n < l) {
 					catchers[n].call(this, path);
+					count++;
 				}
 			}
 
-			return this;
+			return !!count;
 		},
 
 		// .create(regex)
@@ -149,17 +159,7 @@
 	};
 
 	function getCatchers(object) {
-		if (!object.catchers) {
-			Object.defineProperty(object, 'catchers', {
-				value: []
-			});
-		}
-
-		return object.catchers;
-	}
-
-	function classOf(object) {
-		return Object.prototype.toString.apply(object).slice(8, -1).toLowerCase();
+		return object[catchersSymbol] || (object[catchersSymbol] = []);
 	}
 
 	function testRegex(route, regex) {
@@ -176,7 +176,6 @@
 
 	function Router(base) {
 		var router = Object.create(prototype, properties);
-		var rpath;
 		var pathname = location.pathname;
 
 		function listen() {
@@ -193,12 +192,49 @@
 			router.trigger(location.pathname.replace(rpath, ''));
 		}
 
+		function click(e) {
+			// Already handled
+			if (e.defaultPrevented) { return; }
+		
+			// Not primary button
+			if (!dom.isPrimaryButton(e)) { return; }
+		
+			var node = dom.closest('a[href]', e.target);
+
+			// Not in a link
+			if (!node) { return; }
+
+			// A download
+			if (dom.attribute('download', node)) { return; }
+
+			// Another window or frame
+			if (node.target && node.target !== '_self') { return; }
+
+			// An external site
+			if (location.hostname !== node.hostname) { return; }
+
+			// Only the hash changed
+			if (node.href !== location.href && node.href.split('#')[0] === location.href.split('#')) { return; }
+
+			// From: https://github.com/riot/route/blob/master/src/index.js :: click()
+			//    || base[0] !== '#' && getPathFromRoot(el.href).indexOf(base) !== 0 // outside of base
+			//    || base[0] === '#' && el.href.split(base)[0] !== loc.href.split(base)[0] // outside of #base
+			//    || !go(getPathFromBase(el.href), el.title || doc.title) // route not found
+
+			var path = node.pathname.replace(rpath, '');
+			var isRouted = router.navigate(path);
+
+			if (isRouted) { e.preventDefault(); }
+		}
+
 		router.root = router;
 		router.path = '/';
 		router.base = base || '';
-		rpath = RegExp('^' + router.base + router.path);
+
+		var rpath = RegExp('^' + router.base + router.path);
 
 		window.addEventListener('popstate', listen);
+		document.addEventListener('click', click);
 
 		router.destroy = function() {
 			window.removeEventListener('popstate', listen);
@@ -221,8 +257,7 @@
 			// so we must manually trigger the route change.
 			// We could trigger a false popstate event instead,
 			// definitely worth considering.
-			this.trigger(location.pathname.replace(rpath, ''));
-			return this;
+			return this.trigger(location.pathname.replace(rpath, ''));
 		};
 
 		return router;
