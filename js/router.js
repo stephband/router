@@ -84,7 +84,7 @@
 
 			while (++n < l) {
 				route = this[n];
-				args = route[0].exec(path);
+				args  = route[0].exec(path);
 
 				if (args) {
 					route[0].lastString = path;
