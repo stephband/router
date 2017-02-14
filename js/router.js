@@ -16,7 +16,7 @@
 
 	var location = window.location;
 
-	var catcherSymbol = Symbol('catchers');
+	var catchersSymbol = Symbol('catchers');
 
 	var prototype = {
 
@@ -221,10 +221,8 @@
 			//    || base[0] === '#' && el.href.split(base)[0] !== loc.href.split(base)[0] // outside of #base
 			//    || !go(getPathFromBase(el.href), el.title || doc.title) // route not found
 
-			var path = node.pathname.replace(rpath, '');
-			var isRouted = router.navigate(path);
-
-			if (isRouted) { e.preventDefault(); }
+			// If route is accepted, prevent default browser navigation
+			if (router.navigate(node.pathname)) { e.preventDefault(); }
 		}
 
 		router.root = router;
@@ -244,19 +242,15 @@
 		router.navigate = function(path, options) {
 			if (debug) { console.log('router.navigate()', path); }
 
-			path = router.base + (rslash.test(path) ? path : (router.path + path));
-
 			if (options && options.history === false) {
 				history.replaceState(blank, '', path);
 			}
 			else {
 				history.pushState(blank, '', path);
 			}
-
+console.log(location.pathname.replace(rpath, ''));
 			// A pushState call does not send a popstate event,
 			// so we must manually trigger the route change.
-			// We could trigger a false popstate event instead,
-			// definitely worth considering.
 			return this.trigger(location.pathname.replace(rpath, ''));
 		};
 
