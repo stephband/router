@@ -182,14 +182,9 @@
 			// Hash changes fire popstate. We don't want to
 			// change the route unless the pathname has changed.
 			if (location.pathname === pathname) { return; }
-			pathname = location.pathname;
 
-			// Check the path matches the router's path.
-			if (!rpath.test(pathname)) { return; }
-
-			if (debug) { console.log('window:popstate', location.pathname); }
-
-			router.trigger(location.pathname.replace(rpath, ''));
+			// Trigger route
+			router.route();
 		}
 
 		function click(e) {
@@ -222,7 +217,7 @@
 			//    || !go(getPathFromBase(el.href), el.title || doc.title) // route not found
 
 			// If route is accepted, prevent default browser navigation
-			if (router.navigate(node.pathname)) { e.preventDefault(); }
+			if (router.route(node.pathname)) { e.preventDefault(); }
 		}
 
 		router.root = router;
@@ -236,27 +231,59 @@
 
 		router.destroy = function() {
 			window.removeEventListener('popstate', listen);
+			document.removeEventListener('click', click);
 			prototype.destroy.apply(this);
 		};
 
-		router.navigate = function(path, options) {
-			if (debug) { console.log('router.navigate()', path); }
+		router.route = function(path, stack) {
+			// Where no path is given do not update the history state
+			if (arguments.length) {
+				if (stack === false) {
+					history.replaceState(blank, '', path);
+				}
+				else {
+					history.pushState(blank, '', path);
+				}
+			}
 
-			if (options && options.history === false) {
-				history.replaceState(blank, '', path);
-			}
-			else {
-				history.pushState(blank, '', path);
-			}
-console.log(location.pathname.replace(rpath, ''));
-			// A pushState call does not send a popstate event,
-			// so we must manually trigger the route change.
-			return this.trigger(location.pathname.replace(rpath, ''));
+			pathname = location.pathname;
+
+			// Check the path matches the router's path.
+			if (!rpath.test(pathname)) { return; }
+
+			if (debug) { console.log('Router: route()', pathname); }
+
+			// Trigger the route change
+			return router.trigger(pathname.replace(rpath, ''));
+		};
+
+		router.navigate = function(path, options) {
+			return this.route(path) || (location.pathname = path);
 		};
 
 		return router;
 	}
 
+	Object.defineProperties(Router, {
+		// When routes change should the browser scroll the page?
+		scrolling: {
+			set: function(bool) {
+				if ('scrollRestoration' in history) {
+					history.scrollRestoration = bool ? 'auto' : 'manual' ;
+				}
+				else {
+					// TODO: Support scroll override in IE and Safari and
+					// anything else that dont have no scrollRestoration.
+				}
+			},
+			
+			get: function() {
+				return history.scrollRestoration === 'manual';
+			}
+		}
+	});
+
+	Router.scrolling = false;
 	window.Router = Router;
 
 })(window, window.location, window.history);
