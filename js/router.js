@@ -118,8 +118,8 @@
 
 			this.on(regex, function() {
 				// Set the current root path for the router
-				router.path = this.path + regex.lastMatch;
-				
+				router.base = '/' + regex.lastMatch;
+
 				// Trigger the router with the unmatched remainder of the path
 				router.trigger(regex.lastString.replace(regex, ''));
 			});
@@ -154,7 +154,6 @@
 
 	var properties = {
 		root: { value: undefined, enumerable: false, writable: true },
-		path: { value: undefined, enumerable: false, writable: true },
 		length: { value: 0, enumerable: false, writable: true }
 	};
 
@@ -216,15 +215,18 @@
 			//    || base[0] === '#' && el.href.split(base)[0] !== loc.href.split(base)[0] // outside of #base
 			//    || !go(getPathFromBase(el.href), el.title || doc.title) // route not found
 
+			var routed = router.route(node.pathname);
+
 			// If route is accepted, prevent default browser navigation
-			if (router.route(node.pathname)) { e.preventDefault(); }
+			if (routed) { e.preventDefault(); }
 		}
 
 		router.root = router;
-		router.path = '/';
-		router.base = base || '';
+		router.base = base || '/';
 
-		var rpath = RegExp('^' + router.base + router.path);
+		Object.defineProperty(router, 'path', {
+			get: function() { return pathname; }
+		});
 
 		window.addEventListener('popstate', listen);
 		document.addEventListener('click', click);
@@ -236,6 +238,8 @@
 		};
 
 		router.route = function(path, stack) {
+			var rpath = RegExp('^' + router.base + '/');
+
 			// Where no path is given do not update the history state
 			if (arguments.length) {
 				if (stack === false) {
