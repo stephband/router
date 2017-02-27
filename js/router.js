@@ -284,7 +284,7 @@
 			get: function() {
 				return history.scrollRestoration === 'manual';
 			}
-		}
+		},
 	});
 
 	Router.scrolling = false;
