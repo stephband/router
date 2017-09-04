@@ -132,14 +132,14 @@
 			return this;
 		},
 
-		navigate: function navigate(path, options) {
+		navigate: function navigate(path) {
 			if (this.path === undefined) { return this; }
 
 			// Where path has a leading '/' send it to root.navigate
 			// without prepending the local path. In other words, treat
 			// as a sort of absolute URL.
 			path = rslash.test(path) ? path : (this.path + path);
-			this.root.navigate(path, options);
+			this.root.navigate(path);
 			return this;
 		},
 
@@ -261,7 +261,7 @@
 			return router.trigger(pathname.replace(rpath, ''));
 		};
 
-		router.navigate = function(path, options) {
+		router.navigate = function(path) {
 			return this.route(path) || (location.pathname = path);
 		};
 
