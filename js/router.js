@@ -26,7 +26,7 @@
 		// capturing groups as arguments.
 
 		on: function on(regex, fn) {
-			this.push(slice(arguments));
+			this.routes.push(slice(arguments));
 			return this;
 		},
 
@@ -67,7 +67,7 @@
 
 		catch: function catchUnmatched(fn) {
 			var array = getCatchers(this);
-			array.push(fn);
+			array.routes.push(fn);
 			return this;
 		},
 
@@ -78,18 +78,18 @@
 
 		trigger: function trigger(path) {
 			var n = -1;
-			var l = this.length;
+			var l = this.routes.length;
 			var count = 0;
 			var route, args;
-
+console.log('>>>', path)
 			while (++n < l) {
-				route = this[n];
+				route = this.routes[n];
 				args  = route[0].exec(path);
 
 				if (args) {
 					route[0].lastString = path;
 					route[0].lastMatch = args[0];
-					route[1].apply(this, slice(args, 1));
+					route[1].apply(null, slice(args, 1));
 					count++;
 				}
 			}
@@ -98,7 +98,7 @@
 				var catchers = getCatchers(this);
 				n = -1;
 				l = catchers.length;
-				
+
 				while (++n < l) {
 					catchers[n].call(this, path);
 					count++;
@@ -141,20 +141,11 @@
 			path = rslash.test(path) ? path : (this.path + path);
 			this.root.navigate(path);
 			return this;
-		},
-
-		// A router is an array-like object. Give it some
-		// array methods.
-
-		map: Array.prototype.map,
-		push: Array.prototype.push,
-		splice: Array.prototype.splice,
-		forEach: Array.prototype.forEach
+		}
 	};
 
 	var properties = {
-		root: { value: undefined, enumerable: false, writable: true },
-		length: { value: 0, enumerable: false, writable: true }
+		root: { value: undefined, enumerable: false, writable: true }
 	};
 
 	function getCatchers(object) {
@@ -189,10 +180,10 @@
 		function click(e) {
 			// Already handled
 			if (e.defaultPrevented) { return; }
-		
+
 			// Not primary button
 			if (!dom.isPrimaryButton(e)) { return; }
-		
+
 			var node = dom.closest('a[href]', e.target);
 
 			// Not in a link
@@ -221,8 +212,9 @@
 			if (routed) { e.preventDefault(); }
 		}
 
-		router.root = router;
-		router.base = base || '/';
+		router.root   = router;
+		router.base   = base || '';
+		router.routes = [];
 
 		Object.defineProperty(router, 'path', {
 			get: function() { return pathname; }
@@ -238,7 +230,8 @@
 		};
 
 		router.route = function(path, stack) {
-			var rpath = RegExp('^' + router.base + '/');
+			// No checking that path ends in '/'?
+			var rpath = RegExp('^' + router.base);
 
 			// Where no path is given do not update the history state
 			if (arguments.length) {
@@ -254,7 +247,6 @@
 
 			// Check the path matches the router's path.
 			if (!rpath.test(pathname)) { return; }
-
 			if (debug) { console.log('Router: route()', pathname); }
 
 			// Trigger the route change
@@ -280,7 +272,7 @@
 					// anything else that dont have no scrollRestoration.
 				}
 			},
-			
+
 			get: function() {
 				return history.scrollRestoration === 'manual';
 			}

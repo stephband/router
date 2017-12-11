@@ -1,4 +1,32 @@
 <body>
 	<h1>Router</h1>
+	<script src="../fn/js/fn.js"></script>
+	<script src="../fn/js/stream.js"></script>
+	<script src="../dom/js/dom.js"></script>
+
 	<script src="js/router.js"></script>
+
+	<script src="../fn/test/test.js"></script>
+
+	<script>
+	var router = new Router('');
+
+	router.on(/^\/hello$/, function() {
+		console.log(3, '/hello !!');
+	});
+
+	console.log(1, router.base === '');
+	console.log(2, router);
+
+
+
+	setTimeout(function() {
+	router.route('/hello');
+
+		setTimeout(function() {
+			router.route('/neho/neho/static/router');
+		}, 500);
+	}, 500);
+
+	</script>
 </body>
