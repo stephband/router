@@ -1,5 +1,57 @@
+<head>
+	<meta charset="utf-8" />
+	<meta name="author" content="" />
+	<meta name="description" content="" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+	<title>Router</title>
+
+	<!-- Bolt requires this. -->
+	<script>document.documentElement.className = 'js';</script>
+
+	<link rel="stylesheet" type="text/css" href="//stephen.band/bolt/dist/bolt.min.css" />
+	<link rel="stylesheet" type="text/css" href="../fn/css/grid.css" />
+	<link rel="stylesheet" type="text/css" href="../fn/css/docs.css" />
+	<link rel="stylesheet" type="text/css" href="../dom/css/dom.css" />
+	<link rel="stylesheet" type="text/css" href="../dom/css/demo.css" />
+</head>
+
 <body>
-	<h1>Router</h1>
+	<header class="grid-block block">
+		<h1 class="block @2-grid-left-1/15 @3-grid-left-1/9">Router</h1>
+	</header>
+
+	<div class="spaced-grid-block grid-block block">
+		<article class="grid-block block @2-span-11/15 @2-span-left-2/15 @3-span-2/9 @3-span-left-1/9">
+			<h2 class="block">Router(path, routes)</h2>
+
+			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="root">
+				<h3 class="dot-indent text-5"><a href="#root"><code class="js">.create(regex, routes)</code></a></h3>
+			</div>
+
+			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="head">
+				<h3 class="dot-indent text-5"><a href="#head"><code class="js">.destroy()</code></a></h3>
+			</div>
+
+			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="body">
+				<h3 class="dot-indent text-5"><a href="#body"><code class="js">.navigate(path)</code></a></h3>
+			</div>
+		</article
+
+		><article class="grid-block block @2-span-11/15 @2-span-left-2/15 @3-span-2/9 @3-span-left-1/9">
+			<h2 class="block"></h2>
+
+			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="root">
+				<h3 class="dot-indent text-5"><a href="#root"><code class="js">.base</code></a></h3>
+				<p>Base path for this router.</p>
+			</div>
+		</article>
+	</div>
+
+	<a href="/neho/helloarsewipe">/neho/helloarsewipe</a>
+	<a href="/neho/not-a-route">/neho/not-a-route</a>
+	<a href="/elsewhere">/elsewhere</a>
+
 	<script src="../fn/js/fn.js"></script>
 	<script src="../fn/js/stream.js"></script>
 	<script src="../dom/js/dom.js"></script>
@@ -9,22 +61,35 @@
 	<script src="../fn/test/test.js"></script>
 
 	<script>
-	var router = new Router('');
+	var router = new Router('/neho', {
+		'^hello$': function() {
+			console.log(3, '/hello !!');
+		}
+	});
 
-	router.on(/^\/hello$/, function() {
-		console.log(3, '/hello !!');
+	router.on(/^hello(\w+)$/, function($1) {
+		console.log(4, '/hello !!', $1);
 	});
 
 	console.log(1, router.base === '');
 	console.log(2, router);
 
-
+	var sub = router.create(/^boo/);
+	sub.on(/^(foo)/, function($1) { console.log(5, $1); })
 
 	setTimeout(function() {
-	router.route('/hello');
+	router.navigate('hello');
 
 		setTimeout(function() {
-			router.route('/neho/neho/static/router');
+			router.navigate('/neho/hellopoopbrain');
+
+			setTimeout(function() {
+				router.navigate('boo/foo');
+
+				setTimeout(function() {
+					router.navigate('/neho/neho/static/router');
+				}, 500);
+			}, 500);
 		}, 500);
 	}, 500);
 
