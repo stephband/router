@@ -210,6 +210,8 @@
 			updateHistory(absPath, replace);
 			return route();
 		};
+
+		route();
 	}
 
 	assign(Router.prototype, {
