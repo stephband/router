@@ -1,30 +1,48 @@
 (function(window) {
 	"use strict";
 
-	var debug = true;
+	var DEBUG    = window.DEBUG !== false;
 
-	var Fn       = window.Fn;
-	var dom      = window.dom;
 	var location = window.location;
 	var history  = window.history;
 
 	var assign   = Object.assign;
 	var entries  = Object.entries;
-	var classOf  = Fn.classOf;
-	var noop     = Fn.noop;
 	var slice    = Function.prototype.call.bind(Array.prototype.slice);
 
 	var blank    = {};
 	var rslash   = /^\//;
+	var routers  = [];
 
-	var catchersSymbol = Symbol('catchers');
 
-	//var properties = {
-	//	root: { value: undefined, enumerable: false, writable: true }
-	//};
+	function noop() {}
 
-	function getCatchers(object) {
-		return object[catchersSymbol] || (object[catchersSymbol] = []);
+	function isPrimaryButton(e) {
+		// Ignore mousedowns on any button other than the left (or primary)
+		// mouse button, or when a modifier key is pressed.
+		return (e.which === 1 && !e.ctrlKey && !e.altKey && !e.shiftKey);
+	}
+
+	function matches(selector, node) {
+		return node.matches ? node.matches(selector) :
+			node.matchesSelector ? node.matchesSelector(selector) :
+			node.webkitMatchesSelector ? node.webkitMatchesSelector(selector) :
+			node.mozMatchesSelector ? node.mozMatchesSelector(selector) :
+			node.msMatchesSelector ? node.msMatchesSelector(selector) :
+			node.oMatchesSelector ? node.oMatchesSelector(selector) :
+			noop ;
+	}
+
+	function closest(selector, node) {
+		if (!node || node === document || node.nodeType === 11) { return; }
+
+		// SVG <use> elements store their DOM reference in
+		// .correspondingUseElement.
+		node = node.correspondingUseElement || node ;
+
+		return matches(selector, node) ?
+			 node :
+			 closest(selector, node.parentNode) ;
 	}
 
 	function getLinkNode(e) {
@@ -32,15 +50,15 @@
 		if (e.defaultPrevented) { return; }
 
 		// Not primary button
-		if (!dom.isPrimaryButton(e)) { return; }
+		if (!isPrimaryButton(e)) { return; }
 
-		var node = dom.closest('a[href]', e.target);
+		var node = closest('a[href]', e.target);
 
 		// Not in a link
 		if (!node) { return; }
 
 		// A download
-		if (dom.attribute('download', node)) { return; }
+		if (node.getAttribute('download')) { return; }
 
 		// Another window or frame
 		if (node.target && node.target !== '_self') { return; }
@@ -71,58 +89,19 @@
 		return testRegex(route, regex) && testFn(route, fn);
 	}
 
-	// .trigger(path)
-	// Call all routes whose regex matches path, passing the result of any
-	// capturing groups to the handler. Data about the current path is
-	// stored on the regex object. It is used internally by .create().
+	function updateHistory(pathname) {
+		var replace;
 
-	function trigger(router, path) {
-		var n = -1;
-		var l = router.routes.length;
-		//var count = 0;
-		var route, args, stop;
-		//console.log('>>>', path);
-		while (++n < l) {
-			route = router.routes[n];
-			args  = route[0].exec(path);
+		// Only update history where pathname is not the current location
+		if (pathname === location.pathname) { return; }
 
-			if (args) {
-				route[0].lastString = path;
-				route[0].lastMatch = args[0];
-				stop = route[1].apply(null, slice(args, 1)) || noop;
-				//count++;
+		//if (DEBUG) { console.log('Router: update history', pathname); }
 
-				// Use this to call first matching route only
-				break;
-			}
+		if (replace) {
+			history.replaceState(blank, '', pathname);
 		}
-
-		var catchers;
-
-		//if (count === 0) {
-		if (!stop) {
-			catchers = getCatchers(router);
-			n = -1;
-			l = catchers.length;
-
-			while (++n < l) {
-				catchers[n].call(this, path);
-				//count++;
-			}
-		}
-
-		return stop;
-	}
-
-	function updateHistory(path, replace) {
-		// Where no path is given do not update the history state
-		if (path !== undefined) {
-			if (replace) {
-				history.replaceState(blank, '', path);
-			}
-			else {
-				history.pushState(blank, '', path);
-			}
+		else {
+			history.pushState(blank, '', pathname);
 		}
 	}
 
@@ -131,87 +110,88 @@
 		return entry;
 	}
 
-	function Router(path, routes) {
+	function route(router, path) {
+		// Call first route whose regex matches path, passing the result of any
+		// capturing groups to the handler. Data about the current path is
+		// stored on the regex object. It is used internally by .create().
+
+		var n = -1;
+		var l = router.routes.length;
+		var route, args;
+
+		while (++n < l) {
+			route = router.routes[n];
+			args  = route[0].exec(path);
+
+			if (args) {
+				route[0].lastString = path;
+				route[0].lastMatch = args[0];
+
+				// Call first matching route only
+				return route[1].apply(null, slice(args, 1)) || noop;
+			}
+		}
+	}
+
+	function Router(base, routes) {
 		if (!Router.prototype.isPrototypeOf(this)) {
 			return new Router(path, routes);
 		}
 
-		var router   = this;
-		var pathname = location.pathname;
-		var stop;
+		var router = this;
+		var path, stop;
 
-		function route() {
-			var rpath = RegExp('^' + router.base + '/');
-			pathname = location.pathname;
+		router.base = base || '';
 
-			// Check the path matches the router's path.
-			if (!rpath.test(pathname)) {
-				console.warn('Router: non matching path??', rpath, pathname)
-				//location.pathname = path;
-				return;
-			}
-
-			if (debug) { console.log('Router: navigate to ', pathname); }
-
-			// Trigger the route change
-			stop && stop();
-			stop = trigger(router, pathname.replace(rpath, ''));
-
-			return !!stop;
-		}
-
-		function popstate() {
-			// Hash changes fire popstate. We don't want to
-			// change the route unless the pathname has changed.
-			if (location.pathname === pathname) { return; }
-
-			// Trigger route
-			route();
-		}
-
-		function click(e) {
-			var node = getLinkNode(e);
-			if (!node) { return; }
-
-			// We don't want to change the route unless the pathname will change.
-			if (node.pathname === pathname) {
-				e.preventDefault();
-				return;
-			}
-
-			var routed = router.navigate(node.pathname);
-			if (routed) {
-				e.preventDefault();
-			}
-		}
-
-		router.base   = path || '';
 		router.routes = routes ?
 			entries(routes).map(toRegexKey) :
 			[] ;
 
-		Object.defineProperty(router, 'path', {
-			get: function() { return pathname; }
-		});
+		router.route = function(pathname) {
+			if (rslash.test(pathname)) {
+				if (!pathname.startsWith(router.base)) {
+					if (DEBUG) { console.warn('Router:route() path does not match router.base', path, router.base); }
+					stop && stop();
+					return false;
+				}
 
-		window.addEventListener('popstate', popstate);
-		document.addEventListener('click', click);
+				pathname = pathname.replace(router.base + '/', '');
+			}
+
+			// If this is the current path return true to indicate that
+			// this router does handle this path.
+			if (pathname === path) {
+				return true;
+			}
+
+			stop && stop();
+
+			// If routing is successful update path and rturn true to indicate
+			// that this router handled the path.
+			if (stop = route(router, pathname)) {
+				path = pathname;
+				return true;
+			}
+
+			path = undefined;
+			return false;
+		};
+
+		router.navigate = function(path) {
+			var pathname = rslash.test(path) ? path : (router.base + '/' + path);
+			return Router.navigate(pathname);
+		};
 
 		router.destroy = function() {
-			window.removeEventListener('popstate', popstate);
-			document.removeEventListener('click', click);
 			this.off();
-			return this;
-			//prototype.destroy.apply(this);
+			var i = routers.indexOf(router);
+			if (i > -1) { routers.splice(i, 1); }
+			return router;
 		};
 
-		this.navigate = function navigate(path, replace) {
-			var absPath = rslash.test(path) ? path : (router.base + '/' + path);
-			updateHistory(absPath, replace);
-			return route();
-		};
-
-		route();
+		// Register router and launch current route
+		routers.push(this);
+		router.route(location.pathname);
 	}
 
 	assign(Router.prototype, {
@@ -247,7 +227,7 @@
 				return this;
 			}
 
-			var test = classOf(regex) === 'function' ? testFn
+			var test = typeof regex === 'function' ? testFn
 				: !fn ? testRegex
 				: testBoth ;
 
@@ -258,50 +238,57 @@
 			}
 
 			return this;
-		},
-
-		catch: function catchUnmatched(fn) {
-			var array = getCatchers(this);
-			array.routes.push(fn);
-			return this;
-		},
-
-		create: function create(regex, routes) {
-			return new SubRouter(this, this, regex, routes);
 		}
 	});
 
-	function SubRouter(root, router, regex, routes) {
-		var sub = this;
+	assign(Router, {
+		navigate: function(pathname) {
+			if (Router.route(pathname)) {
+				updateHistory(pathname);
+				return true;
+			}
+		},
 
-		this.routes = routes ?
-			entries(routes).map(toRegexKey) :
-			[] ;
+		route: function(pathname) {
+			if (!rslash.test(pathname)) {
+				if (DEBUG) {
+					console.warn('Router.route() must be passed a full path starting with a slash', pathname);
+				}
 
-		this.navigate = function navigate(path) {
-			if (this.path === undefined) { return this; }
+				return false;
+			}
 
-			// Where path has a leading '/' send it to root.navigate.
-			// In other words, treat it as an absolute URL.
-			path = rslash.test(path) ? path : (this.path + '/' + path);
-			root.navigate(path);
-			return this;
-		};
+			return routers
+			.map(function(router) { return router.route(pathname); })
+			.indexOf(true) > -1 ;
+		}
+	});
 
-		this.create = function create(regex, routes) {
-			return new SubRouter(root, this, regex, routes);
-		};
 
-		router.on(regex, function() {
-			// Set the current root path for the router
-			sub.base = regex.lastMatch;
+	// Hijack links and route accordingly
 
-			// Trigger the router with the unmatched remainder of the path
-			trigger(sub, regex.lastString.replace(regex, '').replace(rslash, ''));
-		});
-	}
+	document.addEventListener('click', function click(e) {
+		var node = getLinkNode(e);
+		if (!node) { return; }
 
-	assign(SubRouter.prototype, Router.prototype);
+		// On successful routing prevent the click
+		if (Router.navigate(node.pathname)) {
+			e.preventDefault();
+			//pathname = location.pathname;
+		}
+	});
+
+
+	// Listen to back/forward state changes and act accordingly
+
+	window.addEventListener('popstate', function popstate(e) {
+		if (DEBUG) { console.log('Router: popstate', e.state); }
+
+		// Trigger route
+		if (Router.route(location.pathname)) {
+			//pathname = location.pathname;
+		}
+	});
 
 
 	// Export
