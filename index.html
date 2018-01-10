@@ -9,7 +9,7 @@
 	<!-- Bolt requires this. -->
 	<script>document.documentElement.className = 'js';</script>
 
-	<link rel="stylesheet" type="text/css" href="//stephen.band/bolt/dist/bolt.min.css" />
+	<link rel="stylesheet" type="text/css" href="//stephen.band/bolt/dist/bolt.css" />
 	<link rel="stylesheet" type="text/css" href="../fn/css/grid.css" />
 	<link rel="stylesheet" type="text/css" href="../fn/css/docs.css" />
 	<link rel="stylesheet" type="text/css" href="../dom/css/dom.css" />
@@ -25,12 +25,16 @@
 		<article class="grid-block block @2-span-11/15 @2-span-left-2/15 @3-span-2/9 @3-span-left-1/9">
 			<h2 class="block">Router</h2>
 
-			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="head">
-				<h3 class="dot-indent text-5"><a href="#head"><code class="js">.navigate(path)</code></a></h3>
+			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="navigate">
+				<h3 class="dot-indent text-5"><a href="#navigate"><code class="js">.navigate(path)</code></a></h3>
+				<p>Routes all routers to <code class="js">path</code> and updates the browser location.</p>
+				<p><code class="js">path</code> must be a full path name, beginning with '/'.</p>
 			</div>
 
-			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="root">
-				<h3 class="dot-indent text-5"><a href="#root"><code class="js">.route(path)</code></a></h3>
+			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="route">
+				<h3 class="dot-indent text-5"><a href="#route"><code class="js">.route(path)</code></a></h3>
+				<p>Routes all routers to <code class="js">path</code> <i>without</i> updating the browser location.</p>
+				<p><code class="js">path</code> must be a full path name, beginning with '/'.</p>
 			</div>
 		</article
 
@@ -41,12 +45,17 @@
 				<h3 class="dot-indent text-5"><a href="#body"><code class="js">.base</code></a></h3>
 			</div>
 
-			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="head">
-				<h3 class="dot-indent text-5"><a href="#head"><code class="js">.navigate(path)</code></a></h3>
+			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="router-navigation">
+				<h3 class="dot-indent text-5"><a href="#router-navigation"><code class="js">.navigate(path)</code></a></h3>
+				<p>Routes all routers to <code class="js">path</code> and updates the browser location.
+				<code class="js">path</code> may be a full path name, beginning with '/', or a path relative to the base of the router.</p>
 			</div>
 
 			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="root">
 				<h3 class="dot-indent text-5"><a href="#root"><code class="js">.route(path)</code></a></h3>
+				<p>Calls the router function for the first route found to match <code class="js">path</code>,
+				where <code class="js">path</code> may be a full path name, beginning with '/',
+				or a path relative to the base of the router.</p>
 			</div>
 
 			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="root">
@@ -60,21 +69,29 @@
 			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="body">
 				<h3 class="dot-indent text-5"><a href="#body"><code class="js">.destroy(path)</code></a></h3>
 			</div>
+		</article
+
+		><article class="block @2-span-left-2/15 @2-span-5/6 @3-span-left-1/9 @3-span-2/3">
+			<h2 class="block">Test links</h2>
+
+			<a class="block" href="/test/hello">/test/hello</a>
+			<a class="block" href="/test/is-a-route">/test/is-a-route</a>
+			<a class="block" href="/test/is-a-route#doesnt-exist">/test/is-a-route#doesnt-exist</a>
+			<a class="block" href="/test/not-a-route">/test/is-not-a-route</a>
+			<a class="block" href="/outside-route">/outside-route</a>
 		</article>
 	</div>
 
-	<a href="/test/hello">/test/hello</a>
-	<a href="/test/is-a-route">/test/is-a-route</a>
-	<a href="/test/not-a-route">/test/is-not-a-route</a>
-	<a href="/outside-route">/outside-route</a>
-
 	<script src="js/router.js"></script>
+	<script src="js/router-dom.js"></script>
 
 	<!-- Tests -->
 
 	<script src="../fn/js/fn.js"></script>
 	<script src="../fn/js/stream.js"></script>
 	<script src="../dom/js/dom.js"></script>
+	<script src="../dom/js/dom-activate.js"></script>
+	<script src="../dom/js/dom.toggleable.js"></script>
 	<script src="../fn/test/test.js"></script>
 
 	<script>
