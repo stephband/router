@@ -75,7 +75,7 @@
 
 	function Router(base, routes) {
 		if (!Router.prototype.isPrototypeOf(this)) {
-			return new Router(path, routes);
+			return new Router(base, routes);
 		}
 
 		var router = this;
