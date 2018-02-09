@@ -68,7 +68,7 @@
 				route[0].lastMatch = args[0];
 
 				// Call first matching route only
-				return route[1].apply(null, slice(args, 1)) || noop;
+				return route[1].apply(null, slice(args, 1));
 			}
 		}
 	}
@@ -79,9 +79,10 @@
 		}
 
 		var router = this;
-		var path, stop;
+		var stop   = noop;
+		var path;
 
-		router.base = base || '';
+		router.base = base;
 
 		router.routes = routes ?
 			entries(routes).map(toRegexKey) :
@@ -91,7 +92,7 @@
 			if (rslash.test(pathname)) {
 				if (!pathname.startsWith(router.base)) {
 					if (DEBUG) { console.warn('Router:route() path does not match router.base', path, router.base); }
-					stop && stop();
+					stop();
 					return false;
 				}
 
@@ -104,25 +105,27 @@
 				return true;
 			}
 
-			stop && stop();
+			stop();
 
 			// If routing is successful update path and return true to indicate
 			// that this router handled the path.
-			if (stop = route(router, pathname)) {
-				path = pathname;
-				return true;
+			var value = route(router, pathname);
+
+			if (value === false) {
+				path = undefined;
+				stop = noop;
+				return false;
 			}
 
-			path = undefined;
-			return false;
+			stop = typeof value === 'function' ?
+				value :
+				noop ;
+
+			path = pathname;
+			return true;
 		};
 
-		router.navigate = function(path) {
-			var pathname = rslash.test(path) ? path : (router.base + '/' + path);
-			return Router.navigate(pathname);
-		};
-
-		router.destroy = function() {
+		router.stop = function stop() {
 			this.off();
 			var i = routers.indexOf(router);
 			if (i > -1) { routers.splice(i, 1); }
@@ -135,6 +138,7 @@
 	}
 
 	assign(Router.prototype, {
+		base: '',
 
 		// .on(regex, fn)
 		// Bind a fn to be called whenever regex matches the route. Callback fn
