@@ -6,9 +6,9 @@
 	var location = window.location;
 	var history  = window.history;
 
+	var A        = Array.prototype;
 	var assign   = Object.assign;
 	var entries  = Object.entries;
-	var slice    = Function.prototype.call.bind(Array.prototype.slice);
 
 	var blank    = {};
 	var rslash   = /^\//;
@@ -16,6 +16,8 @@
 
 
 	function noop() {}
+
+	function id(value) { return value; }
 
 	function testRegex(route, regex) {
 		return route[0].toString() === regex.toString();
@@ -35,12 +37,11 @@
 		// Only update history where pathname is not the current location
 		if (pathname === location.pathname) { return; }
 
-		//if (DEBUG) { console.log('Router: update history', pathname); }
-
 		if (replace) {
 			history.replaceState(blank, '', pathname);
 		}
 		else {
+			if (DEBUG) { console.log('Router: history push', pathname); }
 			history.pushState(blank, '', pathname);
 		}
 	}
@@ -61,14 +62,17 @@
 
 		while (++n < l) {
 			route = router.routes[n];
-			args  = route[0].exec(path);
+
+			// For convenience dont require the regexes to match the leading
+			// slash in path, a la Django
+			args  = route[0].exec(path.slice(1));
 
 			if (args) {
 				route[0].lastString = path;
 				route[0].lastMatch = args[0];
 
 				// Call first matching route only
-				return route[1].apply(null, slice(args, 1));
+				return route[1].apply(null, A.slice.call(args, 1));
 			}
 		}
 	}
@@ -79,6 +83,7 @@
 		}
 
 		var router = this;
+		var parent = arguments[2] || Router;
 		var stop   = noop;
 		var path;
 
@@ -89,14 +94,9 @@
 			[] ;
 
 		router.route = function(pathname) {
-			if (rslash.test(pathname)) {
-				if (!pathname.startsWith(router.base)) {
-					if (DEBUG) { console.warn('Router:route() path does not match router.base', path, router.base); }
-					stop();
-					return false;
-				}
-
-				pathname = pathname.replace(router.base + '/', '');
+			if (!rslash.test(pathname)) {
+				console.warn('Router: paths must start with "/"');
+				return false;
 			}
 
 			// If this is the current path return true to indicate that
@@ -107,22 +107,41 @@
 
 			stop();
 
-			// If routing is successful update path and return true to indicate
-			// that this router handled the path.
+			// Try the route
 			var value = route(router, pathname);
 
+			// If value is false routing was unsuccessful
 			if (value === false) {
 				path = undefined;
 				stop = noop;
 				return false;
 			}
 
-			stop = typeof value === 'function' ?
-				value :
-				noop ;
-
+			// Otherwise, success! Where value is a function use it as stop(),
+			// update path and return true
+			stop = typeof value === 'function' ? value : noop ;
 			path = pathname;
 			return true;
+		};
+
+		router.navigate = function(path) {
+			if (!rslash.test(path)) {
+				console.warn('Router: paths must start with "/"', path);
+				return false;
+			}
+
+			return parent.navigate(router.base + path);
+		};
+
+		router.absolutePath = function(path) {
+			return parent.absolutePath(router.base + path);
+		};
+
+		router.relativePath = function(absolutePath) {
+			var path = parent.relativePath(absolutePath);
+			return path && path.startsWith(router.base) ?
+				path.slice(router.base.length) :
+				undefined ;
 		};
 
 		router.stop = function stop() {
@@ -134,7 +153,7 @@
 
 		// Register router and launch current route
 		routers.push(this);
-		router.route(location.pathname);
+		router.route(router.relativePath(location.pathname));
 	}
 
 	assign(Router.prototype, {
@@ -146,7 +165,7 @@
 		// capturing groups as arguments.
 
 		on: function on(regex, fn) {
-			this.routes.push(slice(arguments));
+			this.routes.push(A.slice.apply(arguments));
 			return this;
 		},
 
@@ -187,9 +206,9 @@
 	});
 
 	assign(Router, {
-		navigate: function(pathname) {
-			if (Router.route(pathname)) {
-				updateHistory(pathname);
+		navigate: function(path) {
+			if (Router.route(path)) {
+				updateHistory(path);
 				return true;
 			}
 		},
@@ -204,9 +223,16 @@
 			}
 
 			return routers
-			.map(function(router) { return router.route(pathname); })
+			.map(function(router) {
+				return pathname.startsWith(router.base) ?
+					router.route(pathname.slice(router.base.length)) :
+					false ;
+			})
 			.indexOf(true) > -1 ;
-		}
+		},
+
+		relativePath: id,
+		absolutePath: id
 	});
 
 	Object.defineProperties(Router, {
