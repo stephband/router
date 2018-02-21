@@ -7,6 +7,7 @@
 	var history  = window.history;
 
 	var A        = Array.prototype;
+	var define   = Object.defineProperties;
 	var assign   = Object.assign;
 	var entries  = Object.entries;
 
@@ -150,6 +151,12 @@
 			if (i > -1) { routers.splice(i, 1); }
 			return router;
 		};
+
+		define(router, {
+			path: {
+				get: function() { return path; }
+			}
+		});
 
 		// Register router and launch current route
 		routers.push(this);
