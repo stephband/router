@@ -17,7 +17,7 @@
 
 	<style>
 	body {
-		color: #eab81f;
+		color: #e2bc72;
 		background-color: #23292d;
 	}
 
@@ -91,7 +91,27 @@
 
 			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="on">
 				<h3 class="dot-indent text-5"><a href="#on"><code class="js">.on(regex, fn)</code></a></h3>
-				<p>Binds a handler function to a route.</p>
+				<p>
+				Binds a handler function to a route. The handler function is
+				called with <code class="js">router</code> as context and the
+				capturing groups of <code class="js">regex</code> as parameters.
+				</p>
+				<p>
+				At the point in time that the handler function is called
+				<code class="js">router</code> has not yet changed state – ie.
+				<code class="js">router.path</code> is still set to the previous
+				route's path.
+				</p>
+				<p>
+				Return a function from a handler function and that function will
+				be called when the route next changes, allowing you to teardown
+				anything that has been set up in the handler.
+				</p>
+				<p>
+				Return false from a handler function to tell the router that
+				this routing was unsuccessful, whereby the router goes on to try
+				other routes or fallback to default browser navigation.
+				</p>
 			</div>
 
 			<div class="toggleable toggle-block block span-1/1 @1-span-1/1 @2-span-1/1 @3-span-1/1" id="off">

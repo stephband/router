@@ -59,7 +59,7 @@
 
 		var n = -1;
 		var l = router.routes.length;
-		var route, args;
+		var route, args, value;
 
 		while (++n < l) {
 			route = router.routes[n];
@@ -70,12 +70,15 @@
 
 			if (args) {
 				route[0].lastString = path;
-				route[0].lastMatch = args[0];
+				route[0].lastMatch  = args[0];
 
 				// Call first matching route only
-				return route[1].apply(null, A.slice.call(args, 1));
+				value = route[1].apply(router, A.slice.call(args, 1));
+				if (value !== false) { return value; }
 			}
 		}
+
+		return false;
 	}
 
 	function Router(base, routes) {
